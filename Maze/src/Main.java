@@ -46,36 +46,6 @@ public class Main {
         pathTest.add(l1a);
         pathTest.add(l1b);
         pathTest.add(l1c);
-//        pathsTest.add(pathTest);
-//
-//        List<int[]> l2 = new LinkedList<>();
-//        int[] l2a = new int[]{6, 2};
-//        int[] l2b = new int[]{7, 2};
-//        int[] l2c = new int[]{8, 2};
-//        l2.add(l2a);
-//        l2.add(l2b);
-//        l2.add(l2c);
-//        pathsTest.add(l2);
-//
-//        List<int[]> l3 = new LinkedList<>();
-//        int[] l3a = new int[]{8, 2};
-//        int[] l3b = new int[]{8, 3};
-//        int[] l3c = new int[]{8, 4};
-//        int[] l3d = new int[]{8, 5};
-//        int[] l3e = new int[]{8, 6};
-//        int[] l3f = new int[]{8, 7};
-//        l3.add(l3a);
-//        l3.add(l3b);
-//        l3.add(l3c);
-//        l3.add(l3d);
-//        l3.add(l3e);
-//        l3.add(l3f);
-//        pathsTest.add(l3);
-//
-//        for (List<int[]> list : pathsTest) {
-//            stackTest.push(list);
-//        }
-
 
         BufferedImage mazeImg = null;
 
