@@ -3,23 +3,47 @@ import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.LinkedList;
+import java.util.*;
 import java.util.List;
-import java.util.Stack;
 
 public class Main {
 
-    public static final int GREEN = new Color(51, 255, 51).getRGB();
-    public static final int BLUE = new Color(255, 0, 0).getRGB();
+    public static final int GREEN = new Color(0, 255, 0).getRGB();
+    public static final int RED = new Color(255, 0, 0).getRGB();
+    public static final int BLUE = new Color(0, 0, 255).getRGB();
+    public static final int YELLOW = new Color(255, 255, 0).getRGB();
+    public static final int PATH_COLOR = 0;
+    //public static final int PATH_COLOR = -1;
+    //public static final int PATH_COLOR_TRANSPARENT = 0;
+
+    public static boolean endReached = false;
     private static BufferedImage mazeImgRevised = null;
+    private static Stack<List<int[]>> mStackPaths = new Stack<>();
     private static List<List<int[]>> mPathsTruncated = new LinkedList<>();
+    private static List<List<int[]>> mPathSolution = new LinkedList<>();
     public static int[] startCoord = new int[2];
+
     //TODO: remove hardcoded endCoord by finding the path that has a space on the outer wall
-    public static int[] endCoord = new int[]{10, 14};
+    public static int[] endCoord = new int[2];
 
     public static List<List<int[]>> getPathsTruncated() {
         return mPathsTruncated;
+    }
+
+    public static Stack<List<int[]>> getStackPaths() {
+        return mStackPaths;
+    }
+
+    public static List<List<int[]>> getPathSolution() {
+        return mPathSolution;
+    }
+
+    public static void setPathSolution(List<List<int[]>> pathSolution) {
+        Main.mPathSolution = pathSolution;
+    }
+
+    public static void setStackPaths(Stack<List<int[]>> stackPaths) {
+        mStackPaths = stackPaths;
     }
 
     public static void setPathsTruncated(List<List<int[]>> pathsTruncated) {
@@ -37,33 +61,24 @@ public class Main {
     public static void main(String[] args) {
 
 
-//        Stack<List<int[]>> stackTest = new Stack<>();
-//        List<List<int[]>> pathsTest = new LinkedList<>();
-        List<int[]> pathTest = new LinkedList<>();
-        int[] l1a = new int[]{8, 0};
-        int[] l1b = new int[]{8, 1};
-        int[] l1c = new int[]{8, 2};
-        pathTest.add(l1a);
-        pathTest.add(l1b);
-        pathTest.add(l1c);
-
         BufferedImage mazeImg = null;
 
-        File f1 = new File("/home/christopher/Documents/Maze/src/maze.png");
+        File f1 = new File("/home/christopher/Documents/Maze/src/mazefromweb.png");
         try {
             mazeImg = ImageIO.read(f1);
         } catch (IOException e) {
             e.printStackTrace();
         }
 
-        File f2 = new File("/home/christopher/Documents/Maze/src/mazeRevised.png");
+        File f2 = new File("/home/christopher/Documents/Maze/src/mazefromwebRevised.png");
         try {
             setMazeImgRevised(ImageIO.read(f2));
         } catch (IOException e) {
             e.printStackTrace();
         }
 
-        List<List<int[]>> paths = generatePaths(mazeImg, getMazeImgRevised());
+
+        List<List<int[]>> paths = followPath(mazeImg);
 
         // TODO:
         //  check to see which paths contain path 0
@@ -71,31 +86,23 @@ public class Main {
         //  add left, right, and/or down values to stack
         //  explore other paths
         //  return back to path 0 and
+        Stack<List<int[]>> stackPathsTemp = new Stack<>();
 
-        //start path added to Stack
-        Stack<List<int[]>> pathStack = new Stack<>();
-
-        for (List<int[]> l : paths) {
-            getPathsTruncated().add(l);
+        for (List<int[]> path : paths) {
+            getPathsTruncated().add(path);
         }
-        int[] storeMe = new int[2];
-        int xCoord, yCoord;
         boolean startPathFound = false;
+        //find the start path
         for (List<int[]> path : paths) {
             if (startPathFound == true) {
                 break;
             }
             for (int i = 0; i < path.size(); i++) {
                 if (Arrays.equals(path.get(i), startCoord)) {
-                    pathStack.push(path);
-
-                    //color maze
-                    for (int j = 0; j < path.size(); j++) {
-                        storeMe = path.get(j);
-                        xCoord = storeMe[0];
-                        yCoord = storeMe[1];
-                        getMazeImgRevised().setRGB(xCoord, yCoord, BLUE);
-                    }
+                    getPathSolution().add(path);
+                    getStackPaths().push(path);
+                    stackPathsTemp.push(path);
+                    colorMaze(path, BLUE);
                     getPathsTruncated().remove(path);
                     startPathFound = true;
                     break;
@@ -104,73 +111,95 @@ public class Main {
         }
 
         List<int[]> pathToIterate;
-        boolean pathIsFound;
-        while (!pathStack.isEmpty()) {
-            pathIsFound = false;
-            pathToIterate = pathStack.peek();
+        boolean pathFound = false;
+        int pathCounter = 0;
+        Stack<List<int[]>> stackPathsToTruncate = new Stack<>();
+        while (!endReached) {
+            pathToIterate = stackPathsTemp.peek();
+            colorMaze(pathToIterate, YELLOW);
+            //check each path and compare with the stackPath's top.
             for (List<int[]> path : getPathsTruncated()) {
-                for (int i = 0; i < path.size(); i++) {
-                    for (int j = 0; j < pathToIterate.size(); j++) {
+                //if paths = 3, there are no more outcomes.
+                // Break out and move to the stackPath's top.
+                if (pathCounter > 2) {
+                    break;
+                }
+                //check the first and last coordinates of path and pathToIterate
+                for (int i = 0; i < path.size(); i += path.size() - 1) {
+                    for (int j = 0; j < pathToIterate.size(); j += pathToIterate.size() - 1) {
                         if (Arrays.equals(path.get(i), pathToIterate.get(j))) {
-                            pathIsFound = true;
-                            pathStack.push(path);
-                            //color maze
-                            for (int k = 0; k < path.size(); k++) {
-                                storeMe = path.get(k);
-                                //check to see if end point has been reached.
-                                if (storeMe == endCoord) {
-                                    System.out.println("The end has been reached!");
-                                }
-                                xCoord = storeMe[0];
-                                yCoord = storeMe[1];
-                                getMazeImgRevised().setRGB(xCoord, yCoord, BLUE);
-                            }
+                            pathFound = true;
+                            //if pathCounter is 0, add to collection.
+//                            if (pathCounter <= 0) {
+//                                getPathSolution().add(path);
+//                                colorMaze(path, BLUE);
+//                            } else {
+//                                colorMaze(path, RED);
+//                            }
+                            colorMaze(path, RED);
+                            stackPathsTemp.push(path);
+                            //add path to removal stack.
+                            stackPathsToTruncate.add(path);
+                            pathCounter++;
                             break;
                         }
                     }
+                    if (pathFound == true) {
+                        pathFound = false;
+                        break;
+                    }
                 }
-//                if (pathIsFound == true) {
-//                    break;
-//                }
+            }
+            if (pathCounter < 1) {
+                colorMaze(stackPathsTemp.pop(), RED);
+
+            }
+            //remove path from pathsTruncated
+            while (!stackPathsToTruncate.isEmpty()) {
+                getPathsTruncated().remove(stackPathsToTruncate.pop());
+
             }
             //once all paths have been checked to find the connecting paths,
             //pop the stack.
-            pathStack.pop();
+            pathCounter = 0;
         }
     }
 
-    private static List<List<int[]>> generatePaths(BufferedImage mazeImg, BufferedImage mazeImgRevised) {
+    private static void colorMaze(List<int[]> path, int COLOR) {
+        int[] storeMe;
+        for (int i = 0; i < path.size(); i++) {
+            storeMe = path.get(i);
+            //check to see if end point has been reached.
+            getMazeImgRevised().setRGB(storeMe[0], storeMe[1], COLOR);
+            if (Arrays.equals(storeMe, endCoord)) {
+                System.out.println("The end has been reached!");
+                endReached = true;
+            }
+        }
+    }
+
+    private static List<List<int[]>> followPath(BufferedImage mazeImg) {
         List<List<int[]>> paths = new LinkedList<>();
         boolean foundStart = false;
         for (int y = 0; y < mazeImg.getHeight(); y++) {
             for (int x = 0; x < mazeImg.getWidth(); x++) {
-
                 //if the current node is "white"
-                if (mazeImg.getRGB(x, y) == -1) {
+                if (mazeImg.getRGB(x, y) == PATH_COLOR) {
                     if (!foundStart) {
                         startCoord[0] = x;
                         startCoord[1] = y;
                         foundStart = true;
-                        //int[] pathStartCoord = {x, y};
-                        //save the paths start coordinate to the current path.
-                        //currPath.add(pathStartCoord);
-                        findPath(mazeImg, x, y, paths, new LinkedList<>(), "down");
+                        generatePaths(mazeImg, x, y, paths, new LinkedList<>(), "down");
                     } else {
                         //if current node has bottom node or right node, execute find path.
                         // bottom path first, then right path.
                         if (!isTravelled(paths, x, y)) {
                             try {
-                                if (mazeImg.getRGB(x + 1, y) == -1) {
-                                    //int[] pathStartCoord = {x, y};
-                                    //save the paths start coordinate to the current path.
-                                    //currPath.add(pathStartCoord);
-                                    findPath(mazeImg, x, y, paths, new LinkedList<>(), "right");
+                                if (mazeImg.getRGB(x + 1, y) == PATH_COLOR) {
+                                    generatePaths(mazeImg, x, y, paths, new LinkedList<>(), "right");
                                 }
-                                if (mazeImg.getRGB(x, y + 1) == -1) {
-                                    //int[] pathStartCoord = {x, y};
-                                    //save the paths start coordinate to the current path.
-                                    //currPath.add(pathStartCoord);
-                                    findPath(mazeImg, x, y, paths, new LinkedList<>(), "down");
+                                if (mazeImg.getRGB(x, y + 1) == PATH_COLOR) {
+                                    generatePaths(mazeImg, x, y, paths, new LinkedList<>(), "down");
                                 }
                             } catch (Exception e) {
                                 System.out.println(e.getMessage());
@@ -196,56 +225,61 @@ public class Main {
         return false;
     }
 
-    private static void findPath(BufferedImage mazeImg, int x, int y, List<List<int[]>> paths, List<int[]> currPath, String direction) {
+    private static void generatePaths(BufferedImage mazeImg, int x, int y, List<List<int[]>> paths, List<int[]>
+            path, String direction) {
 
         //TODO: change color of map where currentPath has been added.
-        currPath.add(new int[]{x, y});
-        getMazeImgRevised().setRGB(x, y, GREEN);
+        path.add(new int[]{x, y});
+        colorMaze(path, GREEN);
         try {
-            if (mazeImg.getRGB(x, y) == -1) {
+            if (mazeImg.getRGB(x, y) == PATH_COLOR) {
                 //if bottom node is white space
                 if (direction == "down") {
-                    if (mazeImg.getRGB(x, y + 1) == -1) {
+                    if (y == mazeImg.getWidth() - 1 && mazeImg.getRGB(x, y) == PATH_COLOR) {
+                        System.out.println("has out path");
+                        endCoord[0] = x;
+                        endCoord[1] = y;
+                        paths.add(path);
+                    } else if (mazeImg.getRGB(x, y + 1) == PATH_COLOR) {
                         //if bottom node has left path, end traversal and add
                         //the end coordinate.
-                        if (mazeImg.getRGB(x - 1, y + 1) == -1) {
+                        if (mazeImg.getRGB(x - 1, y + 1) == PATH_COLOR) {
                             System.out.println("has left path");
                             //save the paths end coordinate to the current path.
-                            currPath.add(new int[]{x, y + 1});
-                            getMazeImgRevised().setRGB(x, y + 1, GREEN);
+                            path.add(new int[]{x, y + 1});
+                            colorMaze(path, GREEN);
                             //add the current path with its start and end coordinate
                             //to the collection of paths.
-                            paths.add(currPath);
-                            //if bottom node has right path, end traversal and add
-                            //the end coordinate.
-                        } else if (mazeImg.getRGB(x + 1, y + 1) == -1) {
+                            paths.add(path);
+
+                        } else if (mazeImg.getRGB(x + 1, y + 1) == PATH_COLOR) {
                             System.out.println("has right path");
-                            //save the paths end coordinate to the current path.
-                            currPath.add(new int[]{x, y + 1});
-                            getMazeImgRevised().setRGB(x, y + 1, GREEN);
-                            //add the current path with its start and end coordinate
-                            //to the collection of paths.
-                            paths.add(currPath);
+                            path.add(new int[]{x, y + 1});
+                            colorMaze(path, GREEN);
+                            paths.add(path);
                         } else {
-                            findPath(mazeImg, x, y + 1, paths, currPath, direction);
+                            generatePaths(mazeImg, x, y + 1, paths, path, direction);
                         }
                     }
                 } else if (direction == "right") {
-                    if (mazeImg.getRGB(x + 1, y) == -1) {
+                    if (mazeImg.getRGB(x + 1, y) == PATH_COLOR) {
                         //if right node has downward path, end traversal and add
                         //the end coordinate.
-                        if (mazeImg.getRGB(x + 1, y + 1) == -1) {
-                            System.out.println("has bottom path");
-                            currPath.add(new int[]{x + 1, y});
-                            getMazeImgRevised().setRGB(x + 1, y, GREEN);
-                            paths.add(currPath);
+                        if (mazeImg.getRGB(x + 1, y + 1) == PATH_COLOR) {
+                            System.out.println("has downward path");
+                            path.add(new int[]{x + 1, y});
+                            paths.add(path);
+                            //if right node has upward path, end traversal and add
+                            //the end coordinate.
+                        } else if (mazeImg.getRGB(x + 1, y - 1) == PATH_COLOR) {
+                            System.out.println("has upward path");
+                            path.add(new int[]{x + 1, y});
+                            paths.add(path);
                         } else {
-                            findPath(mazeImg, x + 1, y, paths, currPath, direction);
+                            generatePaths(mazeImg, x + 1, y, paths, path, direction);
                         }
                     }
-
                 }
-
             }
         } catch (Exception e) {
             System.out.println(e.getMessage());
